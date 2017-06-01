@@ -2,60 +2,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>PeerJS sample</title>
+<meta charset="UTF-8" />
+<title>PeerJS sample</title>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script type="text/javascript" src="http://cdn.peerjs.com/0.3/peer.min.js"></script>
+<script>
 
-  <script
-    src="https://code.jquery.com/jquery-2.2.4.min.js"
-    integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
-    crossorigin="anonymous"></script>
-  <script type="text/javascript" src="http://cdn.peerjs.com/0.3/peer.min.js"></script>
+navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 
-  <script>
-  navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+let myStream;
 
-  var myStream;
-  var peer = new Peer({key: 'oh6x0ejrv7r885mi'});
+// when you call to a partner or a partner call you,
+// the process will be same, just display a partner's stream.
+setPartersStream = (stream) => {
+  $('#others-video').prop('src', URL.createObjectURL(stream));
+};
 
-  var setOthersStream = function(stream){
-    $('#others-video').prop('src', URL.createObjectURL(stream));
-  };
+const peer = new Peer({key: 'oh6x0ejrv7r885mi'});
 
-  var setMyStream = function(stream){
+peer.on('open', (id) => {
+  // this is my Id
+  $('#peer-id').text(id);
+});
+
+peer.on('call', (call) => {
+  // when a partner call you, you will answer and
+  // return your stream.
+  call.answer(myStream);
+  call.on('stream', setPartersStream);
+});
+
+peer.on('error', (e) => {
+  console.log(e.message);
+});
+
+
+$(() => {
+  let call;
+  // get UserMedia and set Video element for me
+  navigator.getUserMedia({audio: true, video: true}, (stream) => {
     myStream = stream;
     $('#video').prop('src', URL.createObjectURL(stream));
-  };
+  }, () => {});
 
-  peer.on('open', function(id){
-    $('#peer-id').text(id);
+  // let's chat
+  $('#call').on('click', () => {
+    call = peer.call($('#others-peer-id').val(), myStream);
+    call.on('stream', setPartersStream);
   });
 
-  peer.on('call', function(call){
-    call.answer(myStream);
-    call.on('stream', setOthersStream);
-  });
+  // end of chat
+  $('#close').on('click', () => {if(call) {call.close();}})
+});
 
-  $(function(){
-    navigator.getUserMedia({audio: true, video: true}, setMyStream, function(){});
-
-    $('#call').on('click', function(){
-      var call = peer.call($('#others-peer-id').val(), myStream);
-      call.on('stream', setOthersStream);
-    });
-  });
-
-  peer.on('error', function(e){
-    console.log(e.message);
-  });
-  </script>
+</script>
 </head>
-
 <body>
-  <p>あなたのID : <span id="peer-id"></span></p>
+  <p>My Peer ID : <span id="peer-id"></span></p>
   <div id="dial">
-    <input type="text" id="others-peer-id" placeholder="相手のIDを入力" /><button id="call">コール</button>
+    <input type="text" id="others-peer-id" placeholder="Your Peer ID" />
+    <button id="call">Call</button>
+    <button id="close">Close</button>
   </div>
 
+  <!-- autoplay: when a contents gets ready, it will start automatically. -->
   <video id="video" autoplay muted></video>
   <video id="others-video" autoplay></video>
 </body>
